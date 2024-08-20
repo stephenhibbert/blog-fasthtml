@@ -1,25 +1,21 @@
 ---
-title: "About Daniel Roy Greenfeld"
-description: "A little bit of background about Daniel Roy Greenfeld"
-author: "Daniel Roy Greenfeld"
+title: "About Stephen Hibbert"
+description: "A little background about Stephen Hibbert"
+author: "Stephen Hibbert"
 ---
 
 # About Me
 
-I am a [coder](https://github.com/pydanny), [author](/books), and [speaker](/speaking).
+I live just outside London in St Albans. I enjoy getting outside for a run or a cycle when I'm not typing. 
+My dream is to open an Italian bakery/café serving the best focaccia & coffee.
 
-I'm probably best known as "[pydanny](https://www.google.com/search?q=pydanny)", one of the authors of [Two Scoops of Django](/books/tech). 
+I studied Physics at the University of Birmingham, and have worked in various technology jobs since. I've had the pleasure to work with some brilliant colleagues and customers in industries including cybersecurity, automotive, financial services, broadcast and energy & utilities. Currently, I work as a prototype architect at Amazon Web Services, helping customers figure out *what* to build and then collaboratively building it. I also enjoy tinkering on my own pet projects.
 
-I live in London, love to hang out with my [wife](https://audrey.feldroy.com/), play with my [daughter](/tags/uma), do [Brazilian Jiu-Jitsu](https://en.wikipedia.org/wiki/Brazilian_jiu-jitsu), write [books](/books), and read books. I work at [Kraken Tech](https://kraken.tech/), a company that is part of the sustainable global energy  [Octopus Energy Group](https://octopusenergy.group/) working to address [global climate change](/tags/climate-change).
+I'm passionate about user interfaces and the way people interact with technology. My goal is to create systems that are not only technically robust but also to rhyme with the humans that use them. I'm particularly interested in how technology can be harnessed to address environmental and social challenges.
 
-- [Mastodon](https://fosstodon.org/@danielfeldroy)
-- [LinkedIn](https://www.linkedin.com/in/danielfeldroy/)
-- [Twitter](https://twitter.com/pydanny)
+- [LinkedIn](https://www.linkedin.com/in/stephen-hibbert-2b7a045b)
+- [Twitter](https://twitter.com/stephenhib)
 
 ## About this site
 
-This site is written using the delightful [FastHTML](https://fastht.ml/) web framework. The source code is on [github](https://github.com/pydanny/daniel-blog-fasthtml).
-
-## What about pydanny.com?
-
-That site redirects here. The reason for that is while I'm a huge fan of the Python programming language, there are other languages that I like just as much. To be forever tied to one language felt limiting, hence why I moved the site to daniel.feldroy.com and stopped using "pydanny" so much.
+This blog is forked from [Daniel Roy Greenfeld's blog](https://daniel.feldroy.com/), full credit to him. It's written using the delightful [FastHTML](https://fastht.ml/) web framework. This blog source code is also on [github](https://github.com/stephenhibbert/blog-fasthtml).

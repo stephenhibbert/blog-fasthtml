@@ -1,4 +1,4 @@
-python-fasthtml
+python-fasthtml @ git+https://github.com/AnswerDotAI/fasthtml@main
 pyyaml
 pytz
 feedgen

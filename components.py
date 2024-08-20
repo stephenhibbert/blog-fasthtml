@@ -44,26 +44,22 @@ def Layout(title, socials,*tags):
     return title, socials, (
         Header(
             A(Img(
-                cls='borderCircle', alt='Daniel Roy Greenfeld', src='/public/images/profile.jpg', width='108', height='108')
+                cls='borderCircle', alt='Stephen Hibbert', src='/public/images/profile.jpg', width='108', height='108')
                 , href='/'),
-            A(H2('Daniel Roy Greenfeld'), href="/"),
+            A(H2('Stephen Hibbert'), href="/"),
             P(
                 A('About', href='/about'),'|', 
                 A('Articles', href='/posts'), '|',
-                A('Books', href='/books'), '|',
-                A('Jobs', href='/jobs'), '|',
                 A('Tags', href='/tags'), '|',
                 A('Search', href='/search')
             ), style="text-align: center;"
         ),
     Main(*tags),
     Footer(Hr(), P(
-                A('Mastodon', href='https://fosstodon.org/@danielfeldroy'), '|',
-                A('LinkedIn', href='https://www.linkedin.com/in/danielfeldroy/'), '|',
-                A('Twitter', href='https://twitter.com/pydanny'), '|',
-                A('Atom Feed', href='/feeds/atom.xml')
+                A('LinkedIn', href='https://www.linkedin.com/in/stephen-hibbert-2b7a045b/'), '|',
+                A('Twitter', href='https://twitter.com/stephenhib'), '|',
             ),
-            P(f'All rights reserved {datetime.now().year}, Daniel Roy Greenfeld')
+            P(f'All rights reserved {datetime.now().year}, Stephen Hibbert')
         )
     )
 
@@ -92,10 +88,10 @@ def markdown_page(slug: str):
     content = ''.join(text.split("---")[2:])
     metadata = yaml.safe_load(text.split("---")[1])
     return (Title(metadata.get('title', slug)),
-        Socials(site_name="https://daniel.feldroy.com",
+        Socials(        site_name="https://stephenhib.com",
                         title=metadata.get('title', slug),
                         description=metadata.get('description', 'slug'),
-                        url=f"https://daniel.feldroy.com/{slug}",
+                        url=f"https://stephenhib.com/{slug}",
                         image=metadata.get("image", default_social_image),
                         ),                
         A("← Back to home", href="/"),

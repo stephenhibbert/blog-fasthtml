@@ -7,13 +7,10 @@ from contents import *
 
 from datetime import datetime
 
-# This redirects dict is a relic of previous blog migrations.
-# It is used to redirect old URLs embedded in books, presentations,
-# and more to the new locations.
-redirects = json.loads(pathlib.Path(f"redirects.json").read_text())   
+redirects = json.loads(pathlib.Path(f"redirects.json").read_text()) 
 
 hdrs = (
-    MarkdownJS(),
+    KatexMarkdownJS(),
     HighlightJS(langs=['python', 'javascript', 'html', 'css']),
     Link(rel='stylesheet', href='https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css', type='text/css'),
     Link(rel='stylesheet', href='https://cdn.jsdelivr.net/npm/sakura.css/css/sakura.css', type='text/css'),    
@@ -35,12 +32,12 @@ def get():
     posts = [blog_post(title=x["title"],slug=x["slug"],timestamp=x["date"],description=x.get("description", "")) for x in list_posts()]
     popular = [blog_post(title=x["title"],slug=x["slug"],timestamp=x["date"],description=x.get("description", "")) for x in list_posts() if x.get("popular", False)]    
     return Layout(
-        Title("Daniel Roy Greenfeld"),        
-        Socials(site_name="https://daniel.feldroy.com",
-                    title="Daniel Roy Greenfeld",
-                    description="Daniel Roy Greenfeld's personal blog",
-                    url="https://daniel.feldroy.com",
-                    image="https://daniel.feldroy.com/public/images/profile.jpg",
+        Title("Stephen Hibbert"),        
+        Socials(site_name="https://stephenhib.com",
+                    title="Stephen Hibbert",
+                    description="Stephen Hibbert's personal blog",
+                    url="https://stephenhib.com",
+                    image="https://stephenhib.com/public/images/profile.jpg",
                     ),
         Section(
                 H1('Recent Writings'),
@@ -55,16 +52,16 @@ def get():
 
 @rt("/posts")
 def get():
-    duration = round((datetime.now() - datetime(2005, 9, 3)).days / 365.25, 2)
-    description = f'Everything written by Daniel Roy Greenfeld for the past {duration} years.'
+    duration = round((datetime.now() - datetime(2024, 6, 1)).days / 365.25, 2)
+    description = f'Everything written by Stephen Hibbert in the past {duration} years.'
     posts = [blog_post(title=x["title"],slug=x["slug"],timestamp=x["date"],description=x.get("description", "")) for x in list_posts()]
     return Layout(
-        Title("All posts by Daniel Roy Greenfeld"),
-        Socials(site_name="https://daniel.feldroy.com",
-                        title="All posts by Daniel Roy Greenfeld",
+        Title("All posts by Stephen Hibbert"),
+        Socials(site_name="https://stephenhib.com",
+                        title="All posts by Stephen Hibbert",
                         description=description,
-                        url="https://daniel.feldroy.com/posts/",
-                        image="https://daniel.feldroy.com/public/images/profile.jpg",
+                        url="https://stephenhib.com/posts/",
+                        image="images/stephenhib.jpeg",
                         ),
         Section(
                 H1(f'All Articles ({len(posts)})'),
@@ -81,21 +78,16 @@ def get(slug: str):
     # metadata = yaml.safe_load(pathlib.Path(f"posts/{slug}.md").read_text().split("---")[1])    
     tags = [tag(slug=x) for x in metadata.get("tags", [])]
     specials = ()
-    if 'TIL' in metadata['tags']:
-        specials = (
-            A(href="/tags/TIL")(
-                Img(src="/public/logos/til-1.png", alt="Today I Learned", width="200", height="200", cls="center"),
-            )
-        )
     return Layout(
         Title(metadata['title']),
-        Socials(site_name="https://daniel.feldroy.com",
+        Socials(site_name="https://stephenhib.com",
                         title=metadata["title"],
                         description=metadata.get("description", ""),
-                        url=f"https://daniel.feldroy.com/posts/{slug}",
-                        image="https://daniel.feldroy.com" + metadata.get("image", default_social_image),
+                        url=f"https://stephenhib.com/posts/{slug}",
+                        image="https://stephenhib.com" + metadata.get("image", default_social_image),
                         ),        
         Section(
+            Img(src=metadata.get("image", default_social_image), alt=metadata.get("title", "Stephen Hibbert"), style="width: 100%;"),
             H1(metadata["title"]),
             Div(content,cls="marked"),
             Div(style="width: 200px; margin: auto; display: block;")(*specials),
@@ -108,11 +100,11 @@ def get(slug: str):
 def get():
     tags = [tag_with_count(slug=x[0], count=x[1]) for x in list_tags().items()]
     return Layout(Title("Tags"),
-        Socials(site_name="https://daniel.feldroy.com",
+        Socials(site_name="https://stephenhib.com",
                         title="Tags",
                         description="All tags used in the site.",
-                        url="https://daniel.feldroy.com/tags/",
-                        image="https://daniel.feldroy.com/public/images/profile.jpg",
+                        url="https://stephenhib.com/tags/",
+                        image="https://stephenhib.com/public/images/profile.jpg",
                         ),               
         Section(
             H1('Tags'),
@@ -127,11 +119,11 @@ def get():
 def get(slug: str):
     posts = [blog_post(title=x["title"],slug=x["slug"],timestamp=x["date"],description=x.get("description", "")) for x in list_posts() if slug in x.get("tags", [])]
     return Layout(Title(f"Tag: {slug}"),
-        Socials(site_name="https://daniel.feldroy.com",
+        Socials(site_name="https://stephenhib.com",
                         title=f"Tag: {slug}",
                         description=f'Posts tagged with "{slug}" ({len(posts)})',
-                        url=f"https://daniel.feldroy.com/tags/{slug}",
-                        image="https://daniel.feldroy.com/public/images/profile.jpg",
+                        url=f"https://stephenhib.com/tags/{slug}",
+                        image="https://stephenhib.com/public/images/profile.jpg",
                         ),                       
         Section(
             H1(f'Posts tagged with "{slug}" ({len(posts)})'),
@@ -163,11 +155,11 @@ def get(q: str = ""):
         messages = []
         description = ""
     return Layout(Title("Search"), 
-        Socials(site_name="https://daniel.feldroy.com",
+        Socials(site_name="https://stephenhib.com",
                         title="Search the site",
                         description=description,
-                        url="https://daniel.feldroy.com/search",
-                        image="https://daniel.feldroy.com/public/images/profile.jpg",
+                        url="https://stephenhib.com/search",
+                        image="https://stephenhib.com/public/images/profile.jpg",
                         ),                    
         Form(Input(name="q", value=q, id="search", type="search", autofocus=True), Button("Search"), style="text-align: center;"),
         Section(
@@ -177,12 +169,8 @@ def get(q: str = ""):
         )
     )
 
-@rt("/feeds/{fname:path}.{ext}")
-def get(fname:str, ext:str): 
-    return FileResponse(f'feeds/{fname}.{ext}')
-
 reg_re_param("static", "ico|gif|jpg|jpeg|webm|css|js|woff|png|svg|mp4|webp|ttf|otf|eot|woff2|txt")
-
+    
 @rt("/{slug}.html")
 def get(slug: str):
     url = redirects.get(slug, None) or redirects.get(slug + ".html", None)
@@ -196,7 +184,7 @@ def get(slug: str):
     if redirects_url is not None:
         return RedirectResponse(url=redirects_url)
     return Layout(*markdown_page(slug))
-    
+
 @rt("/{slug_1}/{slug_2}")
 def get(slug_1: str, slug_2: str):
     return Layout(*markdown_page(slug_1 + "/" + slug_2))
