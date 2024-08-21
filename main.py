@@ -18,7 +18,7 @@ hdrs = (
 def not_found(req, exc): return Titled("404: I don't exist!")
 
 exception_handlers = {404: not_found}
-app, rt = fast_app(hdrs=hdrs, pico=False, debug=True, exception_handlers=exception_handlers)
+app, rt = fast_app(hdrs=hdrs, pico=False, exception_handlers=exception_handlers)
 
 @rt("/")
 def get():
