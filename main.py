@@ -7,8 +7,6 @@ from contents import *
 
 from datetime import datetime
 
-redirects = json.loads(pathlib.Path(f"redirects.json").read_text()) 
-
 hdrs = (
     KatexMarkdownJS(),
     HighlightJS(langs=['python', 'javascript', 'html', 'css']),
@@ -17,15 +15,10 @@ hdrs = (
     Link(rel='stylesheet', href='/public/style.css', type='text/css'),        
 )
 
-def not_found(response):
-    response.status = 404
-    return Titled("Not Found", H1("404 Not Found"), P("The page you are looking for does not exist."))
+def not_found(req, exc): return Titled("404: I don't exist!")
 
-exception_handlers = {
-    404: not_found
-}
-
-app, rt = fast_app(hdrs=hdrs, pico=False, debug=True)
+exception_handlers = {404: not_found}
+app, rt = fast_app(hdrs=hdrs, pico=False, debug=True, exception_handlers=exception_handlers)
 
 @rt("/")
 def get():
@@ -72,6 +65,8 @@ def get():
 
 @rt("/posts/{slug}")
 def get(slug: str):
+    if not pathlib.Path(f"posts/{slug}.md").exists():
+        raise HTTPException(404)
     # post = [x for x in filter(lambda x: x["slug"] == slug, list_posts())][0]
     content, metadata = get_post(slug)
     # content = pathlib.Path(f"posts/{slug}.md").read_text().split("---")[2]
@@ -170,23 +165,11 @@ def get(q: str = ""):
     )
 
 reg_re_param("static", "ico|gif|jpg|jpeg|webm|css|js|woff|png|svg|mp4|webp|ttf|otf|eot|woff2|txt")
-    
-@rt("/{slug}.html")
-def get(slug: str):
-    url = redirects.get(slug, None) or redirects.get(slug + ".html", None)
-    if url is not None:
-        return RedirectResponse(url=url)
-    return HTTPException(404)
 
 @rt("/{slug}")
 def get(slug: str):
-    redirects_url = redirects.get(slug, None)
-    if redirects_url is not None:
-        return RedirectResponse(url=redirects_url)
-    return Layout(*markdown_page(slug))
-
-@rt("/{slug_1}/{slug_2}")
-def get(slug_1: str, slug_2: str):
-    return Layout(*markdown_page(slug_1 + "/" + slug_2))
+    if pathlib.Path(f"pages/{slug}.md").exists():
+        return Layout(*markdown_page(slug))
+    raise HTTPException(404)
 
 serve()
