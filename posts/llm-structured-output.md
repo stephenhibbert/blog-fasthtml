@@ -11,69 +11,84 @@ image: /public/images/llm-structured-outputs/banner.png
 twitter_image: /public/images/llm-structured-outputs/banner.png
 ---
 
-Large Language Models are text token generators.
-We give them unicode strings, they turn them into tokens (a sequence of numbers) and then predict a probability distribution over the next token in the sequence.
+Building robust software with Large Language Models (LLMs) presents unique challenges.
+In this post, I'll explain practically how some of these challenges can be mitigated with structured outputs.
+
+First, consider a simple chatbot application:
+
+<Image alt="the cat sat on the" src="/public/images/llm-structured-outputs/chatbot.png" width={500} height={200} />
+
+The user 
+- ① types a question which is
+- ② encoded and input to the LLM, then 
+- ③ generates an output which is decoded and rendered on the UI to be
+- ④ read by the user. 
+
+LLMs are text token generators. We give them an input sequence and then predict a probability distribution over the next item in the sequence.
+
 Let's take a real example, consider the following string:
 
 ```json
 The cat sat on the
 ```
 
-Using this as the input to a language model generator, we get the following output distribution (showing the top 10 probabilities):
+Using this as the input to a language model generator, we get the following output distribution for the next token (showing the top 10 probabilities):
 
 <Image alt="the cat sat on the" src="/public/images/llm-structured-outputs/0.png" width={1000} height={500} />
 
-A common way to sample the next token from the distribution is called **greedy decoding**.
-This is simply selecting the token with the highest probability.
+A common way to sample the next token from this distribution is called **greedy decoding**.
+This is simply selecting the token with the highest probability. 
+In the case above, the token with the highest probability is `mat`.
 
-There are no rules or structural guarantees to the content of the output string.
-Any token is valid at any position in the sequence.
-Empirically we see remarkable adherence to the semantic grammar of language, but none of these rules have been predefined.
-Instead they have been learned from data.
-This may be fine for building a chatbot app, where we have a UI to directly display the LLM output to a human and strings are arbitrarily valid.
+In our chatbot, we have a UI to directly display the LLM output to a human, so we free to sample any token from the distribution without constraint. 
+The text may look funny, contain factual errors or even undesirable content, but it won't break our software. 
 
-But what if we're composing an application where the LLM generator is near the start of our system?
-Maybe it's helping us to extract information from unstructured documents, or it could be doing a zero shot classification task.
-Now we require a contract between components to be able to build robust systems.
+Next, imagine we are building a new application: an automated email triage system for a vet.
+Customer emails need to be routed to the proper department, and so the type of animal needs to be extracted from the email.
 
-A standard approach is to write this contract in software.
-For example, we could define a schema that both parties agree upon, which represents the data structure.
-This schema would outline the required fields, their data types, and any validation rules.
+<Image alt="the cat sat on the" src="/public/images/llm-structured-outputs/vet.png" width={500} height={200} />
 
-LLMs don't have the deterministic benefits of inherent structure and schema that we're used to from traditional software engineering.
-In the following three sections, we'll do what we can to regain some of these controls and make LLM systems more useful.
-
-Assume we're building an animal classification system.
-The new system should output JSON with the animal species like so:
+A customer...
+- ① sends an email, which is encoded and input to the LLM, then 
+- ② should output JSON with the animal species so it can
+- ③ be stored in a database to enable the downstream applications
 
 ```json
 {
-  "animal": "lion"
+  "animal": "cat"
 }
 ```
 
+Note that the LLM generator is near the start of our system. 
+And we require a contract between components so software downstream of the LLM can make correct assumptions about the output data. In our case, the output should contain a JSON document, with a required `animal` key that has a string value.
+
 ## Level 1 - Prompting
 
-People have come up with creative ways to improve the likelihood the LLM will adhere to the desired structure by instruction prompting in natural language.
+A naive starting point is to give instructions, or even plead with the LLM in natural language:
 
 ```json
-Classify the document and output JSON with a single 'animal' key.
-The species name should be the value.
+What's the main animal mentioned in the email? Output in JSON.
 Please please please output valid JSON, my career depends on it!
 ```
 
-This is better than no instructions at all and may work, say 70% of the time.
+This is better than no instructions at all and will work some of the time.
+However, we will frequently get structural errors like spurious arrays or misspelt keys:
 
-Developers can try their best to fix JSON errors post-generation on the fly with libraries like [json_repair](https://github.com/mangiucugna/json_repair).
-This may work in testing and for simple cases, but it's fundamentally fragile and hard to ship features using this method in a production codebase.
+```json
+{
+  "animals": ["cat"]
+}
+```
+
+Developers can try their best to fix JSON errors on the fly with libraries like [json_repair](https://github.com/mangiucugna/json_repair).
+This is fundamentally fragile making it hard to ship features using this method in a production codebase.
 
 ## Level 2 - Function calling (tool use)
 
-We can do better by being explicit about the fact we want to generate JSON. We can do this by using a feature called function calling.
-This gives the model the option to intelligently choose to output a JSON object containing arguments to call one or many functions. 
-In practice, we create a JSON Schema and give that to the model alongside the prompt.
+We can do better by being explicit about the fact we want to generate JSON and defining the required fields, their data types, and any validation rules upfront.
+An easy way to do this in python is with the [Pydantic](https://docs.pydantic.dev/latest/) library.
 
-We can use [Pydantic](https://docs.pydantic.dev/latest/) to create a data model:
+First, we create a data model:
 
 ```python
 from pydantic import BaseModel
@@ -84,13 +99,18 @@ class Animal(BaseModel):
 print(Animal.model_json_schema())
 ```
 
-...to generate [JSON Schema](https://json-schema.org/)
+... and use the built in `model_json_schema()` method to create a [JSON Schema](https://json-schema.org/) document:
 
 ```
 {'properties': {'animal': {'title': 'Animal', 'type': 'string'}}, 'required': ['animal'], 'title': 'Animal', 'type': 'object'}
 ```
 
-...which we can use to call the LLM using the instructor library (using function calling under the hood):
+Now we have a formal definition of *valid* written in code we can validate the output from the LLM.
+But how can we input this to help guide the LLM to generate the JSON what we want?
+
+Models have been optimised to learn how to take JSON Schema and return JSON to support function calling.
+We can take advantage of this feature to ask for structured output.
+This is made easy with the [Instructor](https://python.useinstructor.com/) library, by simply supplying the Pydantic model in the `response_model`:
 
 ```
 import instructor
@@ -115,33 +135,28 @@ resp = client.chat.completions.create(
 )
 ```
 
-When we do this with the popular AI model providers APIs, we don't get any guarantees that the model will actually generate JSON compliant with the JSON schema we asked for 100% of the time.
-OpenAI and Anthropic etc can try to optimise for this by training their models to be better at this task, but some percentage of the time we will still get malformed outputs.
-
-Libraries like [Instructor](https://python.useinstructor.com/), [LangChain](https://python.langchain.com/v0.2/api_reference/core/output_parsers/langchain_core.output_parsers.json.JsonOutputParser.html) and others have developer tools that help to bridge this gap.
-Typically this is done by defining the output schema in Pydantic, serialising it to JSON Schema and then validating the LLM response fits the data model explicitly.
-In case it doesn't comply, the API call can be re-tried with the added context of the actual validation error.
-These libraries help a lot and save developers time in not reimplementing the data modelling, prompting, retries and validation logic.
+This improves our chances greatly, and now we can validate and retry the request in-case we get malformed output.
+Instructor helps save developers time by abstracting the data modelling, prompts, retries and validation logic. But, we still don't get any guarantees that the model will be compliant with the JSON Schema we asked for 100% of the time.
 
 ## Level 3 - Structured Output
 
 We can do even better if we pull some tricks in the way tokens are sampled from the language model.
 This is a family of techniques called constrained decoding.
-Remember that the fundamental challenge is that the definition of a valid token according to a JSON schema is a function of the position in the output sequence.
-As an example, imagine we're part way through a generation:
+Remember that the fundamental challenge is that the definition of a valid token according to a JSON Schema is a function of the position in the output sequence.
+As an example, imagine we're midway through a generation:
 
 ```
 {"ani
 ```
 
-Our LLM predicts this distribution:
+Our LLM predicts this distribution for the next token:
 
 <Image alt="1" src="/public/images/llm-structured-outputs/1.png" width={1000} height={500} />
 
 Notice that only a subset of possible tokens are valid JSON according to the JSON Schema above.
 Invalid tokens are greyed out.
 
-We decide to take the token of highest probability append it to the sequence,
+We take the highest probability token and append it to the prior sequence,
 
 ```
 {"animal
@@ -150,6 +165,8 @@ We decide to take the token of highest probability append it to the sequence,
 ...and then generate again...
 
 <Image alt="2" src="/public/images/llm-structured-outputs/2.png" width={1000} height={500} />
+
+...append the most probable next token...
 
 ```
 {"animal":
@@ -182,23 +199,45 @@ now until we have a valid JSON object according to the schema.
 ```
 
 Notice that at each step, we only allow the LLM to select valid tokens according to the sequence thus far and the JSON Schema.
-The definition of **valid** changes based on the values of previous tokens.
+The definition of *valid* changes based on the values of previous tokens.
 All other tokens (shown greyed out) were masked when sampling from the distribution.
 When creating these visuals, I manually identified the invalid tokens.
 We need a programmatic and dynamic way to define what is a valid next token to implement constrained decoding.
 
-One way this can be achieved is by converting our JSON Schema into a context-free grammar (CFG).
+One way this can be achieved is by using a context-free grammar (CFG).
 This is a formal way to specify a language plus rules which govern correct use of the language.
-If you want to learn more about CFGs, I recommend the [Wikipedia page](https://en.wikipedia.org/wiki/Context-free_grammar) as a starting point.
-If you're an engineer and want to see the code that turns JSON Schema into a CFG, check out [the outlines code here](https://github.com/outlines-dev/outlines).
-Once this is defined, we have our dynamic definition of valid at sample time.
-By running this validity test during autoregressive inference, we have knowledge of which tokens in the vocabulary could be valid and simply set the probability of all other tokens to 0 before the final sampling.
+A JSON grammar can be written down in [ENBF](https://www.wikiwand.com/en/articles/Extended_Backus%E2%80%93Naur_form). 
 
-Note that this trick requires that you have access to the full logits (the full probability distribution over the token vocabulary) the LLM generates.
-This means you need to be using a model API that supports this, or you need to be running your model on your own infrastructure.
-Read the original paper [Efficient Guided Generation for Large Language Model](https://arxiv.org/pdf/2307.09702) and have a look at the [outlines](https://outlines-dev.github.io/outlines/) project if you're self-hosting a model in which you'd like to make use of structured outputs.
+```tex
+?start: value
+
+?value: object
+| array
+| UNESCAPED_STRING
+| SIGNED_NUMBER      -> number
+| "true"             -> true
+| "false"            -> false
+| "null"             -> null
+
+array  : "[" [value ("," value)*] "]"
+object : "{" [pair ("," pair)*] "}"
+pair   : UNESCAPED_STRING ":" value
+
+%import common.UNESCAPED_STRING
+%import common.SIGNED_NUMBER
+%import common.WS
+
+%ignore WS
+```
+
+See the [Lark](https://lark-parser.readthedocs.io/en/latest/json_tutorial.html) docs for more details about how this is constructed.
+
+The last piece in the puzzle is the code to connect the CFG parser to the output of an LLM during token sampling. [Outlines](https://outlines-dev.github.io/outlines/) project that makes this easy if you're self-hosting a model. Note that this trick requires that you have access to the full logits (the full probability distribution over the token vocabulary) the LLM generates. This means you need to be using a model API that supports this, or you need to be running your model on your own infrastructure.
+
+Read the original paper from the [.txt](https://dottxt.co/) team [Efficient Guided Generation for Large Language Model](https://arxiv.org/pdf/2307.09702) or checkout their [blog](https://blog.dottxt.co/) for more details.
+
 Recently, OpenAI implemented the same ideas and announced [support for structured outputs](https://openai.com/index/introducing-structured-outputs-in-the-api/) directly in their API.
 Hopefully we'll get similar features through other AI model providers soon.
 
 ## Conclusion
-With structured output, it's possible to guarantee the output format of generated text tokens from a large language model. However, that certainly doesn't guarantee the output is correct. There is some evidence that adding structure could help performance for some tasks. For example, this result on the [GSM8K Benchmark](https://blog.dottxt.co/performance-gsm8k.html). What it certainly does do is help developers use LLMs as components to build robust systems.
+With structured output, it's possible to guarantee the output format of generated text tokens from a large language model. However, that certainly doesn't guarantee the output is correct. What it certainly does do is help developers use LLMs as components to build robust systems.
