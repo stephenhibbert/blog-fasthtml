@@ -11,8 +11,61 @@ hdrs = (
     KatexMarkdownJS(),
     HighlightJS(langs=['python', 'javascript', 'html', 'css']),
     Link(rel='stylesheet', href='https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css', type='text/css'),
-    Link(rel='stylesheet', href='https://cdn.jsdelivr.net/npm/sakura.css/css/sakura.css', type='text/css'),    
-    Link(rel='stylesheet', href='/public/style.css', type='text/css'),        
+    Link(rel='stylesheet', href='https://cdn.jsdelivr.net/npm/sakura.css/css/sakura.css', type='text/css'),
+    Style("""
+            a {color: #059669 !important;}
+            h1 {
+                font-size: 2.5rem;
+                line-height: 1.2;
+                font-weight: 800;
+                letter-spacing: -0.05rem;
+                margin: 1rem 0;
+            }
+            
+            h2 {
+                font-size: 2rem;
+                line-height: 1.3;
+                font-weight: 800;
+                letter-spacing: -0.05rem;
+                margin: 1rem 0;
+            }
+            
+            h3 {
+                font-size: 1.5rem;
+                line-height: 1.4;
+                margin: 1rem 0;
+            }
+            
+            h4 {
+                font-size: 1.2rem;
+                line-height: 1.5;
+            }
+
+            .borderCircle {
+            border-radius: 9999px;
+            margin-bottom: 0rem;
+            text-decoration: none;
+            }  
+
+            .list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            }
+
+            .listItem {
+            margin: 0 0 1.25rem;
+            }
+
+            .lightText {
+            color: #666;
+            }
+
+            .center {
+            display: flex;
+            justify-content: center;  
+            }
+        """),
 )
 
 def not_found(req, exc): return Titled("404: I don't exist!")
