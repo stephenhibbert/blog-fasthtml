@@ -6,7 +6,10 @@ import pathlib
 import pytz
 import yaml
 import collections
-
+from nb2fasthtml.core import (
+    render_nb, read_nb, get_frontmatter_raw,render_md,
+    strip_list
+)
 
 profile_pic = "/public/images/profile.jpg"
 
@@ -121,21 +124,51 @@ def format_datetime(dt: datetime) -> str:
     formatted_time = dt.strftime("%I:%M%p").lstrip("0").lower()
     return f"{formatted_date} at {formatted_time}"
 
+def render_code_output(cell,lang='python', render_md=render_md):
+    res = []
+    if len(cell['outputs'])==0: ''
+    for output in cell['outputs']:
+        print(output['output_type'])
+        if output['output_type'] == 'execute_result':
+            data = output['data']
+            if 'text/markdown' in data.keys():
+                res.append(NotStr(''.join(strip_list(data['text/markdown'][1:-1]))))
+            elif 'text/plain' in data.keys():
+                res.append(''.join(strip_list(data['text/plain'])))
+        if output['output_type'] == 'stream':
+            res.append(''.join(strip_list(output['text'])))
+    if res: return render_md(*res, container=Pre)
 
 # Content loading functions remain the same...
 @functools.cache
-def list_posts(
-    published: bool = True, posts_dirname="posts", content=False
-) -> list[dict]:
-    """Load all posts and their frontmatter with caching."""
-    posts = []
-    for post in pathlib.Path(".").glob(f"{posts_dirname}/**/*.md"):
-        raw = post.read_text().split("---")[1]
-        data = yaml.safe_load(raw)
+def list_posts(published: bool = True, posts_dirname="posts", content=False) -> list[dict]:
+    """
+    Loads all the posts and their frontmatter.
+    Note: Could use pathlib better
+    """
+    posts: list[dict] = []
+    # Fetch notebooks
+    for post in pathlib.Path('.').glob(f"{posts_dirname}/**/*.ipynb"):
+        if '.ipynb_checkpoints' in str(post): continue
+        nb = read_nb(post)
+        data: dict = get_frontmatter_raw(nb.cells[0])
         data["slug"] = post.stem
-        data["cls"] = "marked"
+        data['cls'] = 'notebook'
         if content:
-            data["content"] = "\n".join(post.read_text().split("---")[2:])
+            data["content"] = render_nb(post,
+                                cls='',
+                                fm_fn=lambda x: '',
+                                out_fn=render_code_output
+                                )
+        posts.append(data)
+    # Fetch markdown
+    for post in pathlib.Path('.').glob(f"{posts_dirname}/**/*.md"):
+        raw: str = post.read_text().split("---")[1]
+        data: dict = yaml.safe_load(raw)
+        data["slug"] = post.stem
+        data['cls'] = 'marked'
+        if content:
+            data["content"] = '\n'.join(post.read_text().split("---")[2:])
         posts.append(data)
 
     posts.sort(key=lambda x: x["date"], reverse=True)
@@ -257,8 +290,7 @@ def BlogPostPreview(title: str, slug: str, timestamp: str, description: str):
 
 
 def TagLink(slug: str):
-    """Render a tag link."""
-    return A(slug, href=f"/tags/{slug}")
+    return Span(A(slug, href=f"/tags/{slug}"), " ")
 
 
 def TagLinkWithCount(slug: str, count: int):
@@ -350,7 +382,7 @@ def not_found(request=None, exc=None):
 
 
 exception_handlers = {404: not_found}
-app, rt = fast_app(hdrs=hdrs, pico=False, exception_handlers=exception_handlers)
+app, rt = fast_app(hdrs=hdrs, pico=False, exception_handlers=exception_handlers, live=True)
 
 
 @rt("/")
