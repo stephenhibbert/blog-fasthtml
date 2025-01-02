@@ -2,6 +2,7 @@
 builder = "NIXPACKS"
 
 [deploy]
+startCommand = "python main.py"
 numReplicas = 1
 sleepApplication = false
 restartPolicyType = "ON_FAILURE"
