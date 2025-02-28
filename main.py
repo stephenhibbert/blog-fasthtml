@@ -124,20 +124,79 @@ def format_datetime(dt: datetime) -> str:
     formatted_time = dt.strftime("%I:%M%p").lstrip("0").lower()
     return f"{formatted_date} at {formatted_time}"
 
-def render_code_output(cell,lang='python', render_md=render_md):
+
+def render_code_output(cell, lang='python', render_md=render_md):
+    def escape_backticks(text):
+        # Replace backticks with escaped version
+        return str(text).replace('`', '\\`')
+
+    def handle_image_data(data):
+        # Handle different image formats
+        if 'image/png' in data:
+            img_data = data['image/png']
+            return f'![png](data:image/png;base64,{img_data})'
+        elif 'image/jpeg' in data:
+            img_data = data['image/jpeg']
+            return f'![jpeg](data:image/jpeg;base64,{img_data})'
+        elif 'image/svg+xml' in data:
+            img_data = data['image/svg+xml']
+            return f'<img src="data:image/svg+xml;base64,{base64.b64encode(img_data.encode()).decode()}">'
+        return None
+
     res = []
-    if len(cell['outputs'])==0: ''
+    if len(cell['outputs']) == 0:
+        return ''
+
     for output in cell['outputs']:
-        print(output['output_type'])
         if output['output_type'] == 'execute_result':
             data = output['data']
-            if 'text/markdown' in data.keys():
+            if 'text/markdown' in data:
                 res.append(NotStr(''.join(strip_list(data['text/markdown'][1:-1]))))
-            elif 'text/plain' in data.keys():
+            elif 'text/plain' in data:
                 res.append(''.join(strip_list(data['text/plain'])))
-        if output['output_type'] == 'stream':
+            # Handle potential image output in execute_result
+            img_output = handle_image_data(data)
+            if img_output:
+                res.append(img_output)
+
+        elif output['output_type'] == 'stream':
             res.append(''.join(strip_list(output['text'])))
-    if res: return render_md(*res, container=Pre)
+
+        elif output['output_type'] == 'display_data':
+            # Handle display_data type which is commonly used for images
+            data = output['data']
+            img_output = handle_image_data(data)
+            if img_output:
+                res.append(img_output)
+            elif 'text/plain' in data:
+                res.append(''.join(strip_list(data['text/plain'])))
+
+        elif output['output_type'] == 'error':
+            # Handle error outputs
+            error_msg = '\n'.join([f"{line}" for line in output['traceback']])
+            res.append(f"Error:\n{error_msg}")
+
+    # Combine all results into a single string with newlines between them
+    if res:
+        combined_output = '\n'.join(escape_backticks(r) for r in res)
+        return render_md(combined_output, container=Pre)
+    return ''
+
+
+# Helper function to integrate with Mermaid diagrams
+def render_mermaid(graph):
+    """
+    Renders a Mermaid diagram by converting it to a base64-encoded image URL
+    """
+    import base64
+
+    # Encode the graph definition
+    graph_bytes = graph.encode("utf8")
+    base64_bytes = base64.urlsafe_b64encode(graph_bytes)
+    base64_string = base64_bytes.decode("ascii")
+
+    # Return markdown image syntax
+    return f'![mermaid](https://mermaid.ink/img/{base64_string})'
 
 # Content loading functions remain the same...
 @functools.cache
