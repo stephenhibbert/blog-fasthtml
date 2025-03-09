@@ -18,7 +18,6 @@ class ContentNotFound(Exception):
     pass
 
 
-# CSS and Headers configuration remain the same...
 search_modal_css = Style(
     """
 .modal {
@@ -183,7 +182,6 @@ def render_code_output(cell, lang='python', render_md=render_md):
     return ''
 
 
-# Helper function to integrate with Mermaid diagrams
 def render_mermaid(graph):
     """
     Renders a Mermaid diagram by converting it to a base64-encoded image URL
@@ -198,7 +196,6 @@ def render_mermaid(graph):
     # Return markdown image syntax
     return f'![mermaid](https://mermaid.ink/img/{base64_string})'
 
-# Content loading functions remain the same...
 @functools.cache
 def list_posts(published: bool = True, posts_dirname="posts", content=False) -> list[dict]:
     """
@@ -658,6 +655,5 @@ reg_re_param(
     "static", "ico|gif|jpg|jpeg|webm|css|js|woff|png|svg|mp4|webp|ttf|otf|eot|woff2|txt"
 )
 
-# Start the server with hot reload for markdown and notebook files
 if __name__ == "__main__":
     serve(reload_includes="*.md,*.ipynb")
