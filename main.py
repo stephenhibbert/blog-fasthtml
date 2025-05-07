@@ -17,7 +17,6 @@ profile_pic = "/public/images/profile.jpg"
 class ContentNotFound(Exception):
     pass
 
-
 search_modal_css = Style(
     """
 .modal {
@@ -86,6 +85,16 @@ h4 {
     display: flex;
     justify-content: center;
 }
+/* Add these new styles for a moderately wider content area */
+body {
+    max-width: 80% !important;
+    margin: 0 auto !important;
+}
+main {
+    width: 100% !important;
+    max-width: 900px !important;  /* More moderate width */
+    margin: 0 auto !important;
+}
 """
 )
 
@@ -102,20 +111,24 @@ hdrs = (
         href="https://cdn.jsdelivr.net/npm/sakura.css/css/sakura.css",
         type="text/css",
     ),
-    search_modal_css,
+    search_modal_css
 )
 
-# Utility functions remain the same...
+
 def convert_dtstr_to_dt(date_str: str) -> datetime:
     """Convert a naive or non-naive date/datetime string to a datetime object."""
+    if not date_str:
+        return None
+
     try:
         dt = parser.parse(date_str)
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=pytz.UTC)
         return dt
     except (ValueError, TypeError) as e:
-        return None
-
+        print(f"Warning: Could not parse date string: {date_str}, error: {e}")
+        # Return a default date instead of None
+        return datetime(1970, 1, 1, tzinfo=pytz.UTC)  # Unix epoch as fallback
 
 def format_datetime(dt: datetime) -> str:
     """Format the datetime object in a consistent way."""
@@ -125,12 +138,19 @@ def format_datetime(dt: datetime) -> str:
 
 
 def render_code_output(cell, lang='python', render_md=render_md):
+    import re
+
     def escape_backticks(text):
         # Replace backticks with escaped version
         return str(text).replace('`', '\\`')
 
+    def strip_ansi_codes(text):
+        # Regular expression to remove ANSI escape sequences
+        ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+        return ansi_escape.sub('', str(text))
+
     def handle_image_data(data):
-        # Handle different image formats
+        # Handle different image formats - existing code...
         if 'image/png' in data:
             img_data = data['image/png']
             return f'![png](data:image/png;base64,{img_data})'
@@ -152,14 +172,16 @@ def render_code_output(cell, lang='python', render_md=render_md):
             if 'text/markdown' in data:
                 res.append(NotStr(''.join(strip_list(data['text/markdown'][1:-1]))))
             elif 'text/plain' in data:
-                res.append(''.join(strip_list(data['text/plain'])))
+                plain_text = ''.join(strip_list(data['text/plain']))
+                res.append(strip_ansi_codes(plain_text))  # Strip ANSI codes
             # Handle potential image output in execute_result
             img_output = handle_image_data(data)
             if img_output:
                 res.append(img_output)
 
         elif output['output_type'] == 'stream':
-            res.append(''.join(strip_list(output['text'])))
+            stream_text = ''.join(strip_list(output['text']))
+            res.append(strip_ansi_codes(stream_text))  # Strip ANSI codes
 
         elif output['output_type'] == 'display_data':
             # Handle display_data type which is commonly used for images
@@ -168,11 +190,12 @@ def render_code_output(cell, lang='python', render_md=render_md):
             if img_output:
                 res.append(img_output)
             elif 'text/plain' in data:
-                res.append(''.join(strip_list(data['text/plain'])))
+                plain_text = ''.join(strip_list(data['text/plain']))
+                res.append(strip_ansi_codes(plain_text))  # Strip ANSI codes
 
         elif output['output_type'] == 'error':
             # Handle error outputs
-            error_msg = '\n'.join([f"{line}" for line in output['traceback']])
+            error_msg = '\n'.join([strip_ansi_codes(line) for line in output['traceback']])  # Strip ANSI codes
             res.append(f"Error:\n{error_msg}")
 
     # Combine all results into a single string with newlines between them
@@ -196,6 +219,7 @@ def render_mermaid(graph):
     # Return markdown image syntax
     return f'![mermaid](https://mermaid.ink/img/{base64_string})'
 
+
 @functools.cache
 def list_posts(published: bool = True, posts_dirname="posts", content=False) -> list[dict]:
     """
@@ -212,10 +236,10 @@ def list_posts(published: bool = True, posts_dirname="posts", content=False) -> 
         data['cls'] = 'notebook'
         if content:
             data["content"] = render_nb(post,
-                                cls='',
-                                fm_fn=lambda x: '',
-                                out_fn=render_code_output
-                                )
+                                        cls='',
+                                        fm_fn=lambda x: '',
+                                        out_fn=render_code_output
+                                        )
         posts.append(data)
     # Fetch markdown
     for post in pathlib.Path('.').glob(f"{posts_dirname}/**/*.md"):
@@ -227,8 +251,29 @@ def list_posts(published: bool = True, posts_dirname="posts", content=False) -> 
             data["content"] = '\n'.join(post.read_text().split("---")[2:])
         posts.append(data)
 
-    posts.sort(key=lambda x: x["date"], reverse=True)
-    return [x for x in filter(lambda x: x["published"] is published, posts)]
+    # Create a copy of the posts for sorting
+    sorted_posts = []
+    for post in posts:
+        post_copy = post.copy()  # Create a copy to avoid modifying the original
+        # Convert the date string to a datetime object for sorting
+        if isinstance(post_copy["date"], str):
+            dt_obj = convert_dtstr_to_dt(post_copy["date"])
+            if dt_obj:  # Only add if conversion was successful
+                post_copy["_sort_date"] = dt_obj  # Add a separate field for sorting
+                sorted_posts.append(post_copy)
+            else:
+                print(
+                    f"Warning: Could not parse date for post {post_copy.get('title', 'Unknown')}: {post_copy['date']}")
+        else:
+            # If it's already a datetime object
+            post_copy["_sort_date"] = post_copy["date"]
+            sorted_posts.append(post_copy)
+
+    # Sort based on the datetime objects
+    sorted_posts.sort(key=lambda x: x["_sort_date"], reverse=True)
+
+    # Filter for published posts
+    return [x for x in sorted_posts if x["published"] is published]
 
 
 @functools.lru_cache
@@ -453,16 +498,16 @@ def index():
         )
         for x in list_posts()
     ]
-    popular = [
-        BlogPostPreview(
-            title=x["title"],
-            slug=x["slug"],
-            timestamp=x["date"],
-            description=x.get("description", ""),
-        )
-        for x in list_posts()
-        if x.get("popular", False)
-    ]
+    # popular = [
+    #     BlogPostPreview(
+    #         title=x["title"],
+    #         slug=x["slug"],
+    #         timestamp=x["date"],
+    #         description=x.get("description", ""),
+    #     )
+    #     for x in list_posts()
+    #     if x.get("popular", False)
+    # ]
 
     return Layout(
         Title("Stephen Hibbert"),
@@ -474,8 +519,8 @@ def index():
             image="https://stephenhib.com/public/images/profile.jpg",
         ),
         Section(H1("Recent Writings"), *posts[:3]),
-        Hr(),
-        Section(H1("Popular Writings"), *popular),
+        # Hr(),
+        # Section(H1("Popular Writings"), *popular),
     )
 
 
