@@ -102,6 +102,16 @@ hdrs = (
     KatexMarkdownJS(),
     HighlightJS(langs=["python", "javascript", "html", "css"]),
     Link(
+        rel="icon",
+        href="/public/favicon.ico",
+        type="image/x-icon"
+    ),
+    Link(
+        rel="shortcut icon",
+        href="/public/favicon.ico",
+        type="image/x-icon"
+    ),
+    Link(
         rel="stylesheet",
         href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css",
         type="text/css",
