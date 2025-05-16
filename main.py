@@ -10,6 +10,7 @@ from nb2fasthtml.core import (
     render_nb, read_nb, get_frontmatter_raw,render_md,
     strip_list
 )
+from email_sender import ResendEmailSender
 
 profile_pic = "/public/images/profile.jpg"
 
@@ -333,6 +334,8 @@ def Layout(title, socials, *tags):
                     A("Articles", href="/posts"),
                     " | ",
                     A("Tags", href="/tags"),
+                    " | ",
+                    A("Contact", href="/contact"),
                     " | ",
                     A("Search", href="/search"),
                 ),
@@ -694,6 +697,108 @@ def search(q: str = ""):
 def search_results(q: str):
     """HTMX-powered search results route."""
     return _search(q)
+
+
+@rt("/contact")
+def contact():
+    """Contact page with a form for consulting proposals."""
+    return Layout(
+        Title("Contact Me - Stephen Hibbert"),
+        Socials(
+            site_name="https://stephenhib.com",
+            title="Contact Me",
+            description="Get in touch with Stephen Hibbert for consulting opportunities",
+            url="https://stephenhib.com/contact",
+            image="https://stephenhib.com/public/images/profile.jpg",
+        ),
+        Section(
+            H1("Contact Me"),
+            P("If you're interested in consulting services or would like to discuss potential projects, please fill out the form below. I'll get back to you as soon as possible."),
+            Div(
+                Form(
+                    hx_post="/contact-submit",
+                    hx_target="#contact-form",
+                    hx_swap="outerHTML"
+                )(
+                    Label("Name:", For="name"),
+                    Input(type="text", id="name", name="name", required=True),
+                    
+                    Label("Email:", For="email"),
+                    Input(type="email", id="email", name="email", required=True),
+                    
+                    Label("Company (optional):", For="company"),
+                    Input(type="text", id="company", name="company"),
+                                        
+                    Label("Budget Range (optional):", For="budget"),
+                    Select(
+                        Option("Please select...", value=""),
+                        Option("Under £5,000", value="Under £5,000"),
+                        Option("£5,000 - £15,000", value="£5,000 - £15,000"),
+                        Option("£15,000 - £50,000", value="£15,000 - £50,000"),
+                        Option("£50,000+", value="£50,000+"),
+                        id="budget", name="budget"
+                    ),
+                    
+                    Label("Project Details:", For="message"),
+                    Textarea(id="message", name="message", rows="6", required=True),
+                    
+                    Button("Submit", type="submit")
+                ),
+                id="contact-form"
+            ),
+            A("← Back home", href="/"),
+        ),
+    )
+
+
+@rt("/contact-submit", methods=["POST"])
+async def contact_submit(req):
+    """Handle contact form submission and send email notification."""
+    form_data = await req.form()
+    
+    # Extract form data
+    name = form_data.get("name", "")
+    email = form_data.get("email", "")
+    company = form_data.get("company", "")
+    budget = form_data.get("budget", "")
+    message = form_data.get("message", "")
+    
+    # Create email content
+    html_content = f"""
+    <h2>New Consulting Inquiry</h2>
+    <p><strong>Name:</strong> {name}</p>
+    <p><strong>Email:</strong> {email}</p>
+    <p><strong>Company:</strong> {company}</p>
+    <p><strong>Budget Range:</strong> {budget}</p>
+    <p><strong>Project Details:</strong></p>
+    <p>{message}</p>
+    """
+    
+    try:
+        # Initialize the email sender
+        email_sender = ResendEmailSender()
+        
+        # Send the email notification
+        await email_sender.send_email(
+            to="stephenhibbert92@gmail.com",
+            subject=f"New Consulting Inquiry from {name}",
+            html_content=html_content
+        )
+        
+        # Return success message
+        return Div(
+            H3("Thank you for your message!"),
+            P("Your inquiry has been submitted successfully. I'll get back to you as soon as possible."),
+            id="contact-form"
+        )
+    except Exception as e:
+        # Return error message
+        return Div(
+            H3("There was a problem sending your message"),
+            P("Please try again later or email me directly at stephenhibbert92@gmail.com"),
+            P(f"Error details: {str(e)}"),
+            id="contact-form"
+        )
 
 
 @rt("/{slug}")
