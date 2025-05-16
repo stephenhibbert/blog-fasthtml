@@ -480,6 +480,7 @@ def _search(q: str = ""):
                 slug=x["slug"],
                 timestamp=x["date"],
                 description=x.get("description", ""),
+                image=x.get("image")
             )
             for x in list_posts()
             if any(
@@ -533,6 +534,7 @@ def index():
             slug=x["slug"],
             timestamp=x["date"],
             description=x.get("description", ""),
+            image=x.get("image")
         )
         for x in list_posts()
     ]
@@ -658,6 +660,7 @@ def tag(slug: str):
             slug=x["slug"],
             timestamp=x["date"],
             description=x.get("description", ""),
+            image=x.get("image")
         )
         for x in list_posts()
         if slug in x.get("tags", [])
