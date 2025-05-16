@@ -10,8 +10,7 @@ tags:
 - transformers
 published: true
 description: Building a Vision Language Model (VLM) with an LLM + Vision Encoder.
-image: /public/images/llm-vision/banner.png
-twitter_image: /public/images/llm-vision/banner.png
+image: /public/images/llm-vision/binoculars.png
 ---
 
 In 2024, many foundation models have native vision capabilities.

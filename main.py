@@ -387,16 +387,44 @@ def Layout(title, socials, *tags):
         ),
     )
 
-
-def BlogPostPreview(title: str, slug: str, timestamp: str, description: str):
-    """Enhanced blog post preview with better formatting."""
-    return Span(
-        H2(A(title, href=f"/posts/{slug}")),
-        P(
-            description,
-            Br(),
-            Small(Time(format_datetime(convert_dtstr_to_dt(timestamp)))),
-        ),
+def BlogPostPreview(title: str, slug: str, timestamp: str, description: str, image: str):
+    """
+    Enhanced blog post preview with image thumbnail to the left of post info.
+    
+    Parameters:
+    - title: The blog post title
+    - slug: URL slug for the post link
+    - timestamp: ISO format date string
+    - description: Short preview text
+    - image: Path to the thumbnail image
+    """
+    # Format timestamp (assuming you have these functions defined elsewhere)
+    # If you don't have these functions, replace this with your preferred date formatting
+    try:
+        formatted_date = timestamp  # Use your formatting functions here if available
+    except:
+        formatted_date = timestamp
+    
+    # Create the article container with flex layout
+    return Article(
+        # Container div with flexbox to place image next to content
+        Div(
+            # Left side - Image container with fixed dimensions
+            Div(
+                Img(src=image, alt=f"Thumbnail for {title}"),
+                style="width: 120px; height: 120px; overflow: hidden; margin-right: 15px;"
+            ),
+            
+            # Right side - Content container
+            Div(
+                H2(A(title, href=f"/posts/{slug}"), style="margin-top: 0; margin-bottom: 8px;"),
+                P(description, style="margin-bottom: 8px;"),
+                P(Time(formatted_date), style="font-size: 0.8em; color: #666;", cls="timestamp")
+            ),
+            
+            # Styles for the flex container
+            style="display: flex; margin-bottom: 20px; align-items: flex-start;"
+        )
     )
 
 
@@ -545,6 +573,7 @@ def posts():
             slug=x["slug"],
             timestamp=x["date"],
             description=x.get("description", ""),
+            image=x.get("image")
         )
         for x in list_posts()
     ]
