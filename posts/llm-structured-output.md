@@ -7,7 +7,7 @@ tags:
 - outlines
 published: true
 description: Three levels of generating structured outputs from language models.
-image: /public/images/llm-structured-outputs/lego.png
+image: /public/images/llm-structured-outputs/lego.webp
 ---
 
 Building robust software with Large Language Models (LLMs) presents unique challenges.

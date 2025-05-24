@@ -6,12 +6,89 @@ import pathlib
 import pytz
 import yaml
 import collections
+import asyncio
+from PIL import Image
 from nb2fasthtml.core import (
     render_nb, read_nb, get_frontmatter_raw,render_md,
     strip_list
 )
 
 profile_pic = "/public/images/profile.jpg"
+
+
+async def optimize_image(png_path: pathlib.Path) -> bool:
+    """Convert a single PNG to WebP if it results in smaller file size."""
+    webp_path = png_path.with_suffix('.webp')
+    
+    # Skip if WebP exists and is newer
+    if webp_path.exists() and webp_path.stat().st_mtime > png_path.stat().st_mtime:
+        return False
+    
+    try:
+        with Image.open(png_path) as img:
+            # Convert to RGB if RGBA (WebP handles transparency differently)
+            if img.mode == 'RGBA':
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                background.paste(img, mask=img.split()[-1])
+                img = background
+            
+            # Save as WebP with quality 85
+            img.save(webp_path, 'WebP', quality=85, optimize=True)
+            
+        # Check if WebP is actually smaller
+        if webp_path.stat().st_size < png_path.stat().st_size:
+            savings = (1 - webp_path.stat().st_size / png_path.stat().st_size) * 100
+            print(f"✓ Optimized {png_path.name}: {savings:.1f}% size reduction")
+            return True
+        else:
+            # Remove WebP if not smaller
+            webp_path.unlink()
+            return False
+            
+    except Exception as e:
+        print(f"✗ Failed to optimize {png_path.name}: {e}")
+        if webp_path.exists():
+            webp_path.unlink()
+        return False
+
+
+async def optimize_images():
+    """Find and optimize large PNG files."""
+    public_dir = pathlib.Path("public")
+    if not public_dir.exists():
+        return
+    
+    # Find PNG files larger than 100KB
+    large_pngs = [
+        png for png in public_dir.rglob("*.png") 
+        if png.stat().st_size > 100_000
+    ]
+    
+    if not large_pngs:
+        return
+        
+    print(f"Optimizing {len(large_pngs)} large PNG files...")
+    tasks = [optimize_image(png) for png in large_pngs]
+    await asyncio.gather(*tasks, return_exceptions=True)
+
+
+def get_optimized_image_path(original_path: str) -> str:
+    """Return WebP version if it exists and is smaller."""
+    if not original_path.startswith('/public/'):
+        return original_path
+        
+    fs_path = pathlib.Path(original_path.lstrip('/'))
+    
+    if fs_path.suffix.lower() == '.png':
+        webp_path = fs_path.with_suffix('.webp')
+        if webp_path.exists():
+            try:
+                if webp_path.stat().st_size < fs_path.stat().st_size:
+                    return '/' + str(webp_path)
+            except FileNotFoundError:
+                pass
+    
+    return original_path
 
 
 class ContentNotFound(Exception):
@@ -405,13 +482,16 @@ def BlogPostPreview(title: str, slug: str, timestamp: str, description: str, ima
     except:
         formatted_date = timestamp
     
+    # Use optimized image if available
+    optimized_image = get_optimized_image_path(image) if image else image
+    
     # Create the article container with flex layout
     return Article(
         # Container div with flexbox to place image next to content
         Div(
             # Left side - Image container with fixed dimensions
             Div(
-                Img(src=image, alt=f"Thumbnail for {title}"),
+                Img(src=optimized_image, alt=f"Thumbnail for {title}"),
                 style="width: 120px; height: 120px; overflow: hidden; margin-right: 15px;"
             ),
             
@@ -743,4 +823,9 @@ reg_re_param(
 )
 
 if __name__ == "__main__":
+    # Run image optimization on startup
+    print("Starting image optimization...")
+    asyncio.run(optimize_images())
+    print("Image optimization complete!")
+    
     serve(reload_includes="*.md,*.ipynb")
