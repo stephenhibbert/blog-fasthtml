@@ -94,7 +94,7 @@ def get_optimized_image_path(original_path: str) -> str:
 class ContentNotFound(Exception):
     pass
 
-search_modal_css = Style(
+extra_css = Style(
     """
 .modal {
   position: fixed;
@@ -198,7 +198,7 @@ hdrs = (
         href="https://cdn.jsdelivr.net/npm/sakura.css/css/sakura.css",
         type="text/css",
     ),
-    search_modal_css
+    extra_css
 )
 
 
@@ -385,6 +385,20 @@ def list_tags() -> dict[str, int]:
     )
 
 
+@functools.cache
+def list_projects() -> list[dict]:
+    """Load projects from YAML file."""
+    projects_file = pathlib.Path("content/projects.yaml")
+    if not projects_file.exists():
+        return []
+    
+    with open(projects_file) as f:
+        projects = yaml.safe_load(f) or []
+    
+    # Sort by order field if present, otherwise maintain original order
+    return sorted(projects, key=lambda x: x.get('order', 999))
+
+
 # Components
 def Layout(title, socials, *tags):
     """Enhanced layout with improved navigation and search."""
@@ -408,6 +422,8 @@ def Layout(title, socials, *tags):
                     A("About", href="/about"),
                     " | ",
                     A("Articles", href="/posts"),
+                    " | ",
+                    A("Projects", href="/projects"),
                     " | ",
                     A("Tags", href="/tags"),
                     " | ",
@@ -517,6 +533,42 @@ def TagLinkWithCount(slug: str, count: int):
     return A(Span(f"{slug}"), Small(f" ({count}) "), href=f"/tags/{slug}")
 
 
+def ProjectCard(project: dict):
+    """Render a project card with image, title, description, and links."""
+    optimized_image = get_optimized_image_path(project.get('image', '')) if project.get('image') else None
+    
+    # Create tag links
+    tags = [Span(tag, style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 0.8em; margin-right: 4px;") 
+            for tag in project.get('tags', [])]
+    
+    links = []
+    if project.get('url'):
+        links.append(A("View Live", href=project['url'], target="_blank", style="margin-right: 10px;"))
+    if project.get('github'):
+        links.append(A("GitHub", href=project['github'], target="_blank"))
+    
+    return Article(
+        Div(
+            # Left side - Image
+            Div(
+                Img(src=optimized_image, alt=f"Screenshot of {project['title']}") if optimized_image else "",
+                style="width: 200px; height: 150px; overflow: hidden; margin-right: 20px; border-radius: 8px;"
+            ) if optimized_image else "",
+            
+            # Right side - Content
+            Div(
+                H2(project['title'], style="margin-top: 0; margin-bottom: 10px;"),
+                P(project.get('description', ''), style="margin-bottom: 10px; line-height: 1.5;"),
+                Div(*tags, style="margin-bottom: 10px;") if tags else "",
+                Div(*links) if links else "",
+                style="flex: 1;"
+            ),
+            
+            style="display: flex; margin-bottom: 30px; align-items: flex-start; padding: 10px; border-radius: 8px;"
+        )
+    )
+
+
 def MarkdownPage(slug: str):
     """Render a markdown page."""
     try:
@@ -618,17 +670,6 @@ def index():
         )
         for x in list_posts()
     ]
-    # popular = [
-    #     BlogPostPreview(
-    #         title=x["title"],
-    #         slug=x["slug"],
-    #         timestamp=x["date"],
-    #         description=x.get("description", ""),
-    #     )
-    #     for x in list_posts()
-    #     if x.get("popular", False)
-    # ]
-
     return Layout(
         Title("Stephen Hibbert"),
         Socials(
@@ -639,8 +680,6 @@ def index():
             image="https://stephenhib.com/public/images/profile.jpg",
         ),
         Section(H1("Recent Writings"), *posts[:3]),
-        # Hr(),
-        # Section(H1("Popular Writings"), *popular),
     )
 
 
@@ -759,6 +798,30 @@ def tag(slug: str):
             H1(f'Posts tagged with "{slug}" ({len(posts)})'),
             *posts,
             A("← Back home", href="/"),
+        ),
+    )
+
+
+@rt("/projects")
+def projects():
+    """Projects page route."""
+    projects_list = list_projects()
+    project_cards = [ProjectCard(project) for project in projects_list]
+    
+    return Layout(
+        Title("Projects by Stephen Hibbert"),
+        Socials(
+            site_name="https://stephenhib.com",
+            title="Projects by Stephen Hibbert",
+            description="A collection of projects and work by Stephen Hibbert",
+            url="https://stephenhib.com/projects/",
+            image="https://stephenhib.com/public/images/profile.jpg",
+        ),
+        Section(
+            H1(f"Projects ({len(projects_list)})"),
+            P("A collection of personal projects."),
+            *project_cards,
+            A("← Back to home", href="/"),
         ),
     )
 

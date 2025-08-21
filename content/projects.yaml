@@ -1,0 +1,22 @@
+- title: TrailTale
+  description: Better Strava titles
+  image: public/images/projects/trailtale.png
+  tags: [FastHTML, LLM]
+  url: https://trailtale.app
+  order: 1
+
+- title: Personal Blog
+  description: A fast, modern blog built with Python and FastHTML. Features include real-time search, tag management, and responsive design.
+  image: public/images/projects/blog.png
+  tags: [Python, FastHTML]
+  url: https://stephenhib.com
+  github: https://github.com/stephenhibbert/fasthtml-blog
+  order: 2
+
+- title: BayesGPT
+  description: This educational tool helps people understand the basics of Bayesian statistics.
+  image: public/images/projects/bayes.png
+  tags: [React, Next.js, LLM]
+  url: https://bayesgpt-production.up.railway.app/
+  github: https://github.com/stephenhibbert/bayesgpt
+  order: 3
